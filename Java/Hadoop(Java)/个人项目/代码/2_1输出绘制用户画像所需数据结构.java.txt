@@ -1,0 +1,146 @@
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.StringTokenizer;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class Customer { // 2. study all the customers of China Telecom
+
+    public static class RecordMapper
+        extends Mapper<Object, Text, Text, Text>{ // extends <input type, output type>
+
+        public void map(Object key, Text value, Context context
+        		) throws IOException, InterruptedException {
+        	
+        	// read every record
+        	String line = value.toString();
+      	    String[] record = line.split("\t");
+      	    String start_time = record[9].split(":")[0]; // get the phoning start time
+    		DecimalFormat df = new DecimalFormat("#0.00");
+    		String minutes = df.format(Double.parseDouble(record[11])/60); // get the phoning lasting time
+      	    String values = start_time+"\t"+minutes+"\t"+record[12]+"\t"+record[7];
+      	    String keys = record[1]; // only record the callers' information
+      	    
+      	    // set the key and value
+      	    context.write(new Text(keys),new Text(values));
+      	}
+  	}
+
+    public static class CustomerReducer
+        extends Reducer<Text,Text,Text,Text> {
+    	
+    	public static String MostPlace(ArrayList<String> cities) {
+    		HashMap<String,Integer> map = new  HashMap<String,Integer>();
+    		int max = 1;
+    		String ans = cities.get(0);
+    		for(String t:cities) {
+    			if(map.containsKey(t)) {
+    				map.put(t,map.get(t)+1);
+    		        if(max < map.get(t)) {
+    		        	max = map.get(t);
+    		            ans = t;
+    		        }
+    		    }
+    		    else map.put(t,1);
+    		}
+		    return ans;
+    	}
+    	
+    	public void reduce(Text key, Iterable<Text> values, Context context
+    			) throws IOException, InterruptedException {
+    		
+    		int phonecall = 0; // count the total phone call number in a month
+    		double lastingtime = 0; // record the phone time
+    		int[] type = new int[] {0,0,0}; // record the phone type
+    		double[] type_minutes = new double[] {0,0,0}; // record different types of phone call lasting time
+    		int[] hours = new int[24]; // record 24 hours' phone call number
+    		double[] minutes = new double[24]; // record 24 hours phone call lasting time
+    		for(int i=0;i<24;i++) {
+    			hours[i] = 0;
+    			minutes[i] = 0;
+    		}
+    		ArrayList<String> start_place = new ArrayList<String>(); // record the callers' phoning places
+    		String most_start_place = new String(); // record the most callers' phoning places
+    		
+    		Iterator<Text> it = values.iterator();
+    		
+    		while(it.hasNext()) {
+    			String value = it.next().toString();
+    			String[] record = value.split("\t");
+    			
+    			phonecall++;
+    			lastingtime = lastingtime + Double.valueOf(record[1]);
+    			switch(record[2]) {
+    			    case "1": {type[0]++;type_minutes[0] = type_minutes[0]+Double.valueOf(record[1]);break;}
+    			    case "2": {type[1]++;type_minutes[1] = type_minutes[1]+Double.valueOf(record[1]);break;}
+    			    case "3": {type[2]++;type_minutes[2] = type_minutes[2]+Double.valueOf(record[1]);break;}
+    			}
+    			switch(record[0]) {
+    			    case "00": {hours[0]++;minutes[0] = minutes[0]+Double.valueOf(record[1]);break;}
+    			    case "01": {hours[1]++;minutes[1] = minutes[1]+Double.valueOf(record[1]);break;}
+    			    case "02": {hours[2]++;minutes[2] = minutes[2]+Double.valueOf(record[1]);break;}
+    			    case "03": {hours[3]++;minutes[3] = minutes[3]+Double.valueOf(record[1]);break;}
+    			    case "04": {hours[4]++;minutes[4] = minutes[4]+Double.valueOf(record[1]);break;}
+    			    case "05": {hours[5]++;minutes[5] = minutes[5]+Double.valueOf(record[1]);break;}
+    			    case "06": {hours[6]++;minutes[6] = minutes[6]+Double.valueOf(record[1]);break;}
+    			    case "07": {hours[7]++;minutes[7] = minutes[7]+Double.valueOf(record[1]);break;}
+    			    case "08": {hours[8]++;minutes[8] = minutes[8]+Double.valueOf(record[1]);break;}
+    			    case "09": {hours[9]++;minutes[9] = minutes[9]+Double.valueOf(record[1]);break;}
+    			    case "10": {hours[10]++;minutes[10] = minutes[10]+Double.valueOf(record[1]);break;}
+    			    case "11": {hours[11]++;minutes[11] = minutes[11]+Double.valueOf(record[1]);break;}
+    			    case "12": {hours[12]++;minutes[12] = minutes[12]+Double.valueOf(record[1]);break;}
+    			    case "13": {hours[13]++;minutes[13] = minutes[13]+Double.valueOf(record[1]);break;}
+    			    case "14": {hours[14]++;minutes[14] = minutes[14]+Double.valueOf(record[1]);break;}
+    			    case "15": {hours[15]++;minutes[15] = minutes[15]+Double.valueOf(record[1]);break;}
+    			    case "16": {hours[16]++;minutes[16] = minutes[16]+Double.valueOf(record[1]);break;}
+    			    case "17": {hours[17]++;minutes[17] = minutes[17]+Double.valueOf(record[1]);break;}
+    			    case "18": {hours[18]++;minutes[18] = minutes[18]+Double.valueOf(record[1]);break;}
+    			    case "19": {hours[19]++;minutes[19] = minutes[19]+Double.valueOf(record[1]);break;}
+    			    case "20": {hours[20]++;minutes[20] = minutes[20]+Double.valueOf(record[1]);break;}
+    			    case "21": {hours[21]++;minutes[21] = minutes[21]+Double.valueOf(record[1]);break;}
+    			    case "22": {hours[22]++;minutes[22] = minutes[22]+Double.valueOf(record[1]);break;}
+    			    case "23": {hours[23]++;minutes[23] = minutes[23]+Double.valueOf(record[1]);break;}
+    			}
+    			start_place.add(record[3]);
+    		}
+    		
+    		most_start_place = MostPlace(start_place);
+			StringBuilder Stat = new StringBuilder();
+			Stat.append(String.valueOf(phonecall)); // total phone call number
+			DecimalFormat df = new DecimalFormat("#0.00");
+			Stat.append(":"+df.format(lastingtime)); // total phone call time
+			Stat.append("\t"+most_start_place);
+			Stat.append("\t"+"1:"+String.valueOf(type[0])+":"+df.format(type_minutes[0]));
+			Stat.append("\t"+"2:"+String.valueOf(type[1])+":"+df.format(type_minutes[1]));
+			Stat.append("\t"+"3:"+String.valueOf(type[2])+":"+df.format(type_minutes[2]));
+			for(int i=0;i<24;i++) {
+				Stat.append("\t"+String.valueOf(i)+":"+String.valueOf(hours[i])+":"+df.format(minutes[i]));
+			}
+			
+			context.write(key, new Text(Stat.toString()));
+        }
+    }
+
+  public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+    Job job = new Job(conf, "customer");
+    job.setJarByClass(Customer.class);
+    job.setMapperClass(RecordMapper.class);
+    job.setReducerClass(CustomerReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
+    FileInputFormat.addInputPath(job, new Path(args[0]));
+    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}

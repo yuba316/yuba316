@@ -1,0 +1,110 @@
+import java.io.IOException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class MatrixMultiply {
+  public static int rowM = 0;
+  public static int columnM = 0;
+  public static int columnN = 0;
+
+  public static class MatrixMapper extends Mapper<Object, Text, Text, Text> {
+    public void setup(Context context) throws IOException {
+      Configuration conf = context.getConfiguration();
+      columnN = Integer.parseInt(conf.get("columnN"));
+      rowM = Integer.parseInt(conf.get("rowM"));
+    }
+
+    public void map(Object key, Text value, Context context)
+        throws IOException, InterruptedException {
+      FileSplit fileSplit = (FileSplit) context.getInputSplit();
+      String fileName = fileSplit.getPath().getName();
+      String str = value.toString();
+      String[] strs = str.split(",");
+      int i = Integer.parseInt(strs[0]);
+      String[] strs2 = strs[1].split("\t");
+      int j = Integer.parseInt(strs2[0]);
+      int val = Integer.parseInt(strs2[1]);
+
+      if (fileName.contains("M")) {
+        for(int count = 1; count <= columnN; count++) {
+        	context.write(new Text(i+","+count),new Text("M,"+j+","+val+""));
+        }
+      }
+
+      else if (fileName.contains("N")) {
+    	  for(int count = 1; count <= rowM; count++) {
+    		  context.write(new Text(count+","+j),new Text("N,"+i+","+val+""));
+    	  }
+      }
+    }
+  }
+
+  public static class MatrixReducer extends Reducer<Text, Text, Text, Text> {
+    private int sum = 0;
+
+    public void setup(Context context) throws IOException {
+      Configuration conf = context.getConfiguration();
+      columnM = Integer.parseInt(conf.get("columnM"));
+    }
+
+    public void reduce(Text key, Iterable<Text> values, Context context)
+        throws IOException, InterruptedException {
+      int[] M = new int[columnM + 1];
+      int[] N = new int[columnM + 1];
+
+      for (Text value : values) {
+    	  String str = value.toString();
+    	  String[] strs = str.split(",");
+    	  if(strs[0].equals("M")) {
+    		  M[Integer.parseInt(strs[1])]=Integer.parseInt(strs[2]);
+    	  }else {
+    		  N[Integer.parseInt(strs[1])]=Integer.parseInt(strs[2]);
+    	  }
+      }
+      for (int j = 1; j < columnM + 1; j++) {
+        sum += M[j] * N[j];
+      }
+      context.write(key, new Text(Integer.toString(sum)));
+      sum = 0;
+    }
+  }
+
+  public static void main(String[] args) throws Exception {
+
+    if (args.length != 3) {
+      System.err
+          .println("Usage: MatrixMultiply <inputPathM> <inputPathN> <outputPath>");
+      System.exit(2);
+    } else {
+      String[] infoTupleM = args[0].split("_");
+      rowM = Integer.parseInt(infoTupleM[1]);
+      columnM = Integer.parseInt(infoTupleM[2]);
+      String[] infoTupleN = args[1].split("_");
+      columnN = Integer.parseInt(infoTupleN[2]);
+    }
+
+    Configuration conf = new Configuration();
+    conf.setInt("rowM", rowM);
+    conf.setInt("columnM", columnM);
+    conf.setInt("columnN", columnN);
+
+    Job job = new Job(conf, "MatrixMultiply");
+    job.setJarByClass(MatrixMultiply.class);
+    job.setMapperClass(MatrixMapper.class);
+    job.setReducerClass(MatrixReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
+    FileInputFormat.setInputPaths(job, new Path(args[0]), new Path(args[1]));
+    FileOutputFormat.setOutputPath(job, new Path(args[2]));
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}

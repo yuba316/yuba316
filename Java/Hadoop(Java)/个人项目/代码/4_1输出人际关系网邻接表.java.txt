@@ -1,0 +1,62 @@
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.Iterator;
+import java.util.StringTokenizer;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class AdList { // 5. out put the adjacency list of the NetWork
+
+    public static class RecordMapper
+        extends Mapper<Object, Text, Text, Text>{ // extends <input type, output type>
+
+        public void map(Object key, Text value, Context context
+        		) throws IOException, InterruptedException {
+        	
+        	// read every record
+        	String line = value.toString();
+      	    String[] record = line.split("\t");
+      	    String vexNode = record[0]; // save the caller as vexNode
+      	    String arcNode = record[1]; // save the receiver as arcNode
+      	    
+      	    // set the key and value
+      	    context.write(new Text(vexNode),new Text(arcNode));
+      	}
+  	}
+
+    public static class AdListReducer
+        extends Reducer<Text,Text,Text,Text> {
+    	
+    	public void reduce(Text key, Iterable<Text> values, Context context
+    			) throws IOException, InterruptedException {
+    		
+    		StringBuilder arcNodes = new StringBuilder(); // save all the arcNodes
+    		Iterator<Text> it = values.iterator();
+    		while(it.hasNext()) {
+    			String value = it.next().toString();
+    			arcNodes.append(value+"\t");
+    		}
+			context.write(key, new Text(arcNodes.toString()));
+        }
+    }
+
+  public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+    Job job = new Job(conf, "adjacency list");
+    job.setJarByClass(AdList.class);
+    job.setMapperClass(RecordMapper.class);
+    job.setReducerClass(AdListReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
+    FileInputFormat.addInputPath(job, new Path(args[0]));
+    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}

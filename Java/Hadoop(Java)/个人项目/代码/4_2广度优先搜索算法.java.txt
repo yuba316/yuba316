@@ -1,0 +1,119 @@
+package test;
+
+public class Graph {
+	int data;
+	Graph next;
+	
+	Graph(){
+		data = 0;
+		next = null;
+	}
+	
+	Graph(int d){
+		data = d;
+		next = null;
+	}
+}
+
+package test;
+
+import java.io.*;
+import java.util.*;
+import test.Graph;
+
+public class test {
+	static final int  N = 10000005;
+	String file = "E:\\Hadoop\\个人项目\\output\\AdList.txt";
+	String outputFile = "E:\\Hadoop\\个人项目\\distance.txt";
+	Graph[] graph = new Graph[N];
+	int[] distance = new int[N];
+
+	void getData() {
+		for(int i = 0; i < N; i++) graph[i] = new Graph(i);
+		String line = "";
+		BufferedReader bf;
+		try {
+			bf = new BufferedReader(new FileReader(file));
+			while((line = bf.readLine()) != null) {
+				String[] numbers = line.split("\t");
+				int a = stringToInt(numbers[0]);
+				Graph tail = graph[a];
+				for(int i = 1; i < numbers.length; i++) {
+					//System.out.println(a+" "+tail);
+					int num = stringToInt(numbers[i]);
+					if(num <= 0) continue;
+					tail.next = new Graph(num);
+					tail = tail.next;
+				}
+			}
+			bf.close();
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	void bfs(int index) {
+		Graph head = graph[index];
+		Queue<Graph> queue = new LinkedList<Graph>();
+		int depth = 0;
+		int[] count = new int[2];
+		boolean[] vis = new boolean[N];
+		
+		queue.offer(head);
+		count[0] = 1;
+		vis[index] = true;
+		
+		while(!queue.isEmpty()) {
+			//System.out.println(queue.peek().data);
+			head = graph[queue.peek().data];
+			distance[queue.peek().data] = depth;
+			queue.poll();
+			while(head.next != null) {
+				head = head.next;
+				if(vis[head.data] == true) continue;
+				vis[head.data] = true;
+				queue.offer(head);
+				count[(depth+1)%2]++;
+			}
+			count[depth%2]--;
+			if(count[depth%2]==0) depth++;
+		}
+		writeDistance(index);
+	}
+	
+	int stringToInt(String s) {
+		int res = 0;
+		for(int i = 0; i < s.length(); i++) {
+			res = res * 10 + (s.charAt(i) - '0');
+		}
+		return res;
+	}
+	
+	void writeDistance(int index) {
+		BufferedWriter bw = null;
+		File file = new File(outputFile);
+		try {
+			if(!file.exists()) file.createNewFile();
+			FileWriter fw = new FileWriter(file.getAbsoluteFile());
+			bw = new BufferedWriter(fw);
+			for(int i = 1;i < N; i++) if(distance[i]!=0){
+				bw.write(index + " "+ i + " "+distance[i]+"\r\n");
+			}
+			bw.flush();
+			bw.close();
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+	}
+	
+	public static void main(String[] args) {
+		test t = new test();
+		t.getData();
+		t.bfs(1);
+	}
+
+}
